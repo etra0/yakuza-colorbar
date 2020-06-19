@@ -1,0 +1,11 @@
+[package]
+name = "color-injector"
+version = "0.1.0"
+authors = ["Sebastian"]
+edition = "2018"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+winapi = { version = "0.3", features = ["winuser", "consoleapi", "synchapi", "impl-default", "processthreadsapi", "libloaderapi", "memoryapi"] }
