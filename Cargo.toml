@@ -9,3 +9,5 @@ crate-type = ["cdylib"]
 
 [dependencies]
 winapi = { version = "0.3", features = ["winuser", "consoleapi", "synchapi", "impl-default", "processthreadsapi", "libloaderapi", "memoryapi"] }
+rust-ini = "0.15"
+hex = "0.4.2"
