@@ -24,10 +24,15 @@ jobs:
       - name: "Build DLL"
         run: |
           cargo.exe build --release
+          
+      - name: "Copy the files"
+        run: |
+          Copy target\release\color_injector.dll .\color_injector.asi
+          Copy assets\* .\
 
       - name: "Compress"
         run: |
-          tar.exe -a -c -f release.zip target/release/*.dll assets/*
+          tar.exe -a -c -f release.zip color_injector.asi colors.ini dinput8.dll
 
       - name: "Automatic Release"
         uses: "marvinpinto/action-automatic-releases@latest"
