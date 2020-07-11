@@ -1,21 +1,22 @@
-use std::ffi::{CStr, CString};
-use std::io;
-use std::os::raw::c_char;
+use hex;
+use ini::Ini;
+use std::collections::HashMap;
+use std::ffi::CString;
 use std::ptr;
 use winapi;
 use winapi::shared::minwindef::{BOOL, DWORD, HINSTANCE, LPVOID};
-use winapi::um::consoleapi::AllocConsole;
-use std::collections::HashMap;
-use ini::Ini;
-use hex;
 
 #[derive(PartialEq, Debug, Hash, Eq)]
 enum Style {
+    // For some reason, in the exec.
+    // there's two colors for the Brawler bar,
+    // so BrawlerFirst correspond to the first
+    // then Brawler for the rest.
     BrawlerFirst,
     Brawler,
     Beast,
     Rush,
-    Legend
+    Legend,
 }
 
 #[derive(Debug, Default)]
@@ -24,45 +25,61 @@ struct ColorBar {
     color_charged: Vec<u8>,
 
     addr_uncharged: usize,
-    color_uncharged: Vec<u8>
+    color_uncharged: Vec<u8>,
 }
 
-
+/// Initialize the struct with their offset position
 fn initialize_colors() -> HashMap<Style, ColorBar> {
     let mut colorbars = HashMap::new();
 
-    colorbars.insert(Style::BrawlerFirst, ColorBar {
-        addr_charged: 0xEE914,
-        ..Default::default()
-    });
+    colorbars.insert(
+        Style::BrawlerFirst,
+        ColorBar {
+            addr_charged: 0xEE914,
+            ..Default::default()
+        },
+    );
 
-    colorbars.insert(Style::Brawler, ColorBar {
-        addr_charged: 0xEEA3A,
-        addr_uncharged: 0xEE996,
-        ..Default::default()
-    });
+    colorbars.insert(
+        Style::Brawler,
+        ColorBar {
+            addr_charged: 0xEEA3A,
+            addr_uncharged: 0xEE996,
+            ..Default::default()
+        },
+    );
 
-    colorbars.insert(Style::Beast, ColorBar {
-        addr_charged: 0xEE920,
-        addr_uncharged: 0xEE97A,
-        ..Default::default()
-    });
+    colorbars.insert(
+        Style::Beast,
+        ColorBar {
+            addr_charged: 0xEE920,
+            addr_uncharged: 0xEE97A,
+            ..Default::default()
+        },
+    );
 
-    colorbars.insert(Style::Rush, ColorBar {
-        addr_charged: 0xEE926,
-        addr_uncharged: 0xEE988,
-        ..Default::default()
-    });
+    colorbars.insert(
+        Style::Rush,
+        ColorBar {
+            addr_charged: 0xEE926,
+            addr_uncharged: 0xEE988,
+            ..Default::default()
+        },
+    );
 
-    colorbars.insert(Style::Legend, ColorBar {
-        addr_charged: 0xEE91A,
-        addr_uncharged: 0xEE96C,
-        ..Default::default()
-    });
+    colorbars.insert(
+        Style::Legend,
+        ColorBar {
+            addr_charged: 0xEE91A,
+            addr_uncharged: 0xEE96C,
+            ..Default::default()
+        },
+    );
 
     colorbars
 }
 
+/// painful way of writing an array of bytes
 fn write_aob(addr: usize, data: Vec<u8>) {
     use winapi::um::memoryapi::VirtualProtect;
     let s = data.len();
@@ -102,27 +119,31 @@ fn parse_ini() -> Result<HashMap<Style, ColorBar>, ini::ini::Error> {
 
     macro_rules! load_values {
         ($orig:expr, $dest:expr, $sec:expr) => {{
-            let s_charged = $dest
-                .get("charged")
-                .unwrap();
+            let s_charged = $dest.get("charged").unwrap();
             let charged = hex::decode(s_charged).unwrap();
 
-            let s_uncharged = $dest
-                .get("uncharged")
-                .unwrap();
+            let s_uncharged = $dest.get("uncharged").unwrap();
             let uncharged = hex::decode(s_uncharged).unwrap();
 
-            parsed.insert($orig, ColorBar {
-                color_charged: charged.clone(),
-                color_uncharged: uncharged.clone(),
-                ..Default::default()
-            });
+            parsed.insert(
+                $orig,
+                ColorBar {
+                    color_charged: charged.clone(),
+                    color_uncharged: uncharged.clone(),
+                    ..Default::default()
+                },
+            );
 
             if $orig == Style::Brawler {
-                parsed.insert(Style::BrawlerFirst, ColorBar { color_charged: charged.clone(), ..Default::default() });
+                parsed.insert(
+                    Style::BrawlerFirst,
+                    ColorBar {
+                        color_charged: charged.clone(),
+                        ..Default::default()
+                    },
+                );
             }
         }};
-
     }
     for (sec, prop) in conf.iter() {
         match sec {
@@ -130,33 +151,35 @@ fn parse_ini() -> Result<HashMap<Style, ColorBar>, ini::ini::Error> {
             Some("Beast") => load_values!(Style::Beast, prop, sec.unwrap()),
             Some("Rush") => load_values!(Style::Rush, prop, sec.unwrap()),
             Some("Legend") => load_values!(Style::Legend, prop, sec.unwrap()),
-            _ => spit_err(&format!("{} is not a recognized Section", sec.unwrap()))
+            _ => spit_err(&format!("{} is not a recognized Section", sec.unwrap())),
         };
     }
 
     Ok(parsed)
 }
 
-fn write_data(colors: &mut HashMap<Style, ColorBar>, mba: usize) -> Result<(), ini::ini::Error> {
+fn write_data(colors: &mut HashMap<Style, ColorBar>, mba: usize)
+    -> Result<(), ini::ini::Error> {
     let parsed = parse_ini()?;
 
     for (style, col) in &parsed {
         match colors.get_mut(style) {
             Some(_col) => {
                 if col.color_charged.len() > 0 && _col.addr_charged != 0 {
-                    write_aob(mba + _col.addr_charged, col.color_charged.clone());
+                    write_aob(mba + _col.addr_charged,
+                        col.color_charged.clone());
                 }
 
                 if col.color_uncharged.len() > 0 && _col.addr_uncharged != 0 {
-                    write_aob(mba + _col.addr_uncharged, col.color_uncharged.clone());
+                    write_aob(mba + _col.addr_uncharged,
+                        col.color_uncharged.clone());
                 }
-            },
+            }
             None => (),
         };
     }
 
     Ok(())
-
 }
 
 #[no_mangle]
@@ -169,7 +192,7 @@ pub unsafe extern "system" fn init(_: LPVOID) -> DWORD {
     let mut colors = initialize_colors();
     match write_data(&mut colors, mba) {
         Ok(_) => (),
-        Err(_) => return 0
+        Err(_) => spit_err("There was an error while injecting the data"),
     }
 
     return 1;
