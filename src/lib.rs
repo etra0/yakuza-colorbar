@@ -1,9 +1,7 @@
-use hex;
 use ini::Ini;
 use std::collections::HashMap;
 use std::ffi::CString;
 use std::ptr;
-use winapi;
 use winapi::shared::minwindef::{BOOL, DWORD, HINSTANCE, LPVOID};
 
 #[derive(PartialEq, Debug, Hash, Eq)]
@@ -114,7 +112,7 @@ fn parse_ini() -> Result<HashMap<Style, ColorBar>, ini::ini::Error> {
     let mut parsed = HashMap::new();
     let conf = Ini::load_from_file("colors.ini").map_err(|error| {
         spit_err("colors.ini was not found in the exe folder");
-        return error;
+        error
     })?;
 
     macro_rules! load_values {
@@ -192,7 +190,7 @@ pub unsafe extern "system" fn init(_: LPVOID) -> DWORD {
         Err(_) => spit_err("There was an error while injecting the data"),
     }
 
-    return 1;
+    1
 }
 
 #[no_mangle]
@@ -214,5 +212,5 @@ pub extern "system" fn DllMain(_: HINSTANCE, reason: DWORD, _: LPVOID) -> BOOL {
         };
     }
 
-    return true as BOOL;
+    true as BOOL
 }
