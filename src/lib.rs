@@ -21,11 +21,11 @@ enum Style {
 
 #[derive(Debug, Default)]
 struct ColorBar {
-    addr_charged: usize,
-    color_charged: Vec<u8>,
+    addr_charged: Option<usize>,
+    color_charged: Option<Vec<u8>>,
 
-    addr_uncharged: usize,
-    color_uncharged: Vec<u8>,
+    addr_uncharged: Option<usize>,
+    color_uncharged: Option<Vec<u8>>,
 }
 
 /// Initialize the struct with their offset position
@@ -35,7 +35,7 @@ fn initialize_colors() -> HashMap<Style, ColorBar> {
     colorbars.insert(
         Style::BrawlerFirst,
         ColorBar {
-            addr_charged: 0xEE914,
+            addr_charged: Some(0xEE914),
             ..Default::default()
         },
     );
@@ -43,8 +43,8 @@ fn initialize_colors() -> HashMap<Style, ColorBar> {
     colorbars.insert(
         Style::Brawler,
         ColorBar {
-            addr_charged: 0xEEA3A,
-            addr_uncharged: 0xEE996,
+            addr_charged: Some(0xEEA3A),
+            addr_uncharged: Some(0xEE996),
             ..Default::default()
         },
     );
@@ -52,8 +52,8 @@ fn initialize_colors() -> HashMap<Style, ColorBar> {
     colorbars.insert(
         Style::Beast,
         ColorBar {
-            addr_charged: 0xEE920,
-            addr_uncharged: 0xEE97A,
+            addr_charged: Some(0xEE920),
+            addr_uncharged: Some(0xEE97A),
             ..Default::default()
         },
     );
@@ -61,8 +61,8 @@ fn initialize_colors() -> HashMap<Style, ColorBar> {
     colorbars.insert(
         Style::Rush,
         ColorBar {
-            addr_charged: 0xEE926,
-            addr_uncharged: 0xEE988,
+            addr_charged: Some(0xEE926),
+            addr_uncharged: Some(0xEE988),
             ..Default::default()
         },
     );
@@ -70,8 +70,8 @@ fn initialize_colors() -> HashMap<Style, ColorBar> {
     colorbars.insert(
         Style::Legend,
         ColorBar {
-            addr_charged: 0xEE91A,
-            addr_uncharged: 0xEE96C,
+            addr_charged: Some(0xEE91A),
+            addr_uncharged: Some(0xEE96C),
             ..Default::default()
         },
     );
@@ -128,8 +128,8 @@ fn parse_ini() -> Result<HashMap<Style, ColorBar>, ini::ini::Error> {
             parsed.insert(
                 $orig,
                 ColorBar {
-                    color_charged: charged.clone(),
-                    color_uncharged: uncharged.clone(),
+                    color_charged: Some(charged.clone()),
+                    color_uncharged: Some(uncharged.clone()),
                     ..Default::default()
                 },
             );
@@ -138,7 +138,7 @@ fn parse_ini() -> Result<HashMap<Style, ColorBar>, ini::ini::Error> {
                 parsed.insert(
                     Style::BrawlerFirst,
                     ColorBar {
-                        color_charged: charged.clone(),
+                        color_charged: Some(charged.clone()),
                         ..Default::default()
                     },
                 );
@@ -163,20 +163,17 @@ fn write_data(colors: &mut HashMap<Style, ColorBar>, mba: usize)
     let parsed = parse_ini()?;
 
     for (style, col) in &parsed {
-        match colors.get_mut(style) {
-            Some(_col) => {
-                if col.color_charged.len() > 0 && _col.addr_charged != 0 {
-                    write_aob(mba + _col.addr_charged,
-                        col.color_charged.clone());
-                }
-
-                if col.color_uncharged.len() > 0 && _col.addr_uncharged != 0 {
-                    write_aob(mba + _col.addr_uncharged,
-                        col.color_uncharged.clone());
-                }
+        if let Some(_col) = colors.get_mut(style) {
+            if let Some(color) = &col.color_charged {
+                if _col.addr_charged.is_none() { continue; }
+                write_aob(mba + _col.addr_charged.unwrap(), color.clone());
             }
-            None => (),
-        };
+
+            if let Some(color) = &col.color_uncharged { 
+                if _col.addr_uncharged.is_none() { continue; }
+                write_aob(mba + _col.addr_uncharged.unwrap(), color.clone());
+            }
+        }
     }
 
     Ok(())
